@@ -10,7 +10,57 @@ import {
   FormatOptionsWithLanguage,
   FormatOptions,
 } from 'sql-formatter';
-import { validateConfig } from 'sql-formatter/dist/cjs/validateConfig';
+import { ConfigError } from 'sql-formatter';
+
+// Local implementation of validateConfig based on sql-formatter internal logic
+function validateConfig(cfg: FormatOptions): FormatOptions {
+  const removedOptions = [
+    'multilineLists',
+    'newlineBeforeOpenParen',
+    'newlineBeforeCloseParen',
+    'aliasAs',
+    'commaPosition',
+    'tabulateAlias',
+  ];
+
+  for (const optionName of removedOptions) {
+    if (optionName in cfg) {
+      throw new ConfigError(`${optionName} config is no more supported.`);
+    }
+  }
+
+  if (cfg.expressionWidth && cfg.expressionWidth <= 0) {
+    throw new ConfigError(
+      `expressionWidth config must be positive number. Received ${cfg.expressionWidth} instead.`,
+    );
+  }
+
+  if (cfg.params && !validateParams(cfg.params)) {
+    console.warn('WARNING: All "params" option values should be strings.');
+  }
+
+  if (cfg.paramTypes && !validateParamTypes(cfg.paramTypes)) {
+    throw new ConfigError(
+      'Empty regex given in custom paramTypes. That would result in matching infinite amount of parameters.',
+    );
+  }
+
+  return cfg;
+}
+
+function validateParams(params: unknown): boolean {
+  const paramValues =
+    params instanceof Array ? params : Object.values(params as Record<string, unknown>);
+  return paramValues.every((p: unknown) => typeof p === 'string');
+}
+
+function validateParamTypes(paramTypes: unknown): boolean {
+  const types = paramTypes as { custom?: { regex: string }[] };
+  if (types.custom && Array.isArray(types.custom)) {
+    return types.custom.every((p: { regex: string }) => p.regex !== '');
+  }
+  return true;
+}
 
 type ParamTypes = FormatOptions['paramTypes'];
 

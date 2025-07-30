@@ -3,5 +3,6 @@ out/
 .vscode-test/
 
 *.vsix
+.yarn
 
 .vscode-test-web
